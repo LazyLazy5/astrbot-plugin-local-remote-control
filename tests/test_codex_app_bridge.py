@@ -15,6 +15,18 @@ class FakeKv:
         self.data[key] = value
 
 
+class FakeAppServer:
+    def __init__(self):
+        self.sent = []
+
+    async def list_threads(self):
+        return [{"id": "app-thread-1", "title": "App Thread"}]
+
+    async def send_text(self, thread_id, text):
+        self.sent.append((thread_id, text))
+        return True, f"sent to {thread_id}"
+
+
 def run(coro):
     return asyncio.run(coro)
 
@@ -47,6 +59,28 @@ def test_enable_binds_latest_thread_and_rollout_offset(tmp_path):
     assert bridge.bindings["umo"].thread_id == thread_id
     assert bridge.bindings["umo"].rollout_path == rollout
     assert bridge.bindings["umo"].offset == rollout.stat().st_size
+
+
+def test_enable_prefers_app_server_thread(tmp_path):
+    bridge = CodexAppBridge(FakeKv(), codex_home=tmp_path / ".codex", app_server=FakeAppServer())
+
+    message = run(bridge.enable("umo"))
+
+    assert "Codex Bridge on" in message
+    assert "App Thread" in message
+    assert bridge.app_bindings["umo"] == "app-thread-1"
+
+
+def test_send_uses_app_server_when_bound(tmp_path):
+    app_server = FakeAppServer()
+    bridge = CodexAppBridge(FakeKv(), codex_home=tmp_path / ".codex", app_server=app_server)
+    run(bridge.enable("umo"))
+
+    ok, message = run(bridge.send_to_bound_thread("umo", "hello"))
+
+    assert ok is True
+    assert message == "sent to app-thread-1"
+    assert app_server.sent == [("app-thread-1", "hello")]
 
 
 def test_poll_reads_only_new_assistant_messages(tmp_path):
