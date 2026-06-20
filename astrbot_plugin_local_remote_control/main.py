@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +54,7 @@ def _split_command(text: str) -> tuple[str, str]:
 
 try:
     from astrbot.api import AstrBotConfig, logger
-    from astrbot.api.event import AstrMessageEvent, filter
+    from astrbot.api.event import AstrMessageEvent, MessageChain, filter
     from astrbot.api.star import Context, Star, register
 
     ASTROBOT_AVAILABLE = True
@@ -97,15 +98,35 @@ if ASTROBOT_AVAILABLE:
                 self.bridge,
                 allow_git=bool(config.get("allow_git", True)),
             )
+            self._bridge_task: asyncio.Task | None = None
 
         async def initialize(self):
             await self.mode_store.load()
             await self.bridge.load()
             await self.hapi.init()
+            self._bridge_task = asyncio.create_task(self._bridge_poll_loop())
             logger.info("Local Remote Control initialized")
 
         async def terminate(self):
+            if self._bridge_task and not self._bridge_task.done():
+                self._bridge_task.cancel()
+                try:
+                    await self._bridge_task
+                except asyncio.CancelledError:
+                    pass
             await self.hapi.close()
+
+        async def _bridge_poll_loop(self):
+            while True:
+                try:
+                    for umo, text in await self.bridge.poll_once():
+                        chain = MessageChain().message(text)
+                        await self.context.send_message(umo, chain)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    logger.warning("Codex Bridge poll failed: %s", exc)
+                await asyncio.sleep(2)
 
         def _is_admin(self, event: AstrMessageEvent) -> bool:
             configured = [str(x) for x in self.config.get("admin_uids", []) or []]
@@ -188,4 +209,3 @@ if ASTROBOT_AVAILABLE:
 
             result = await self.dispatcher.dispatch(umo, text, self._state_for(umo))
             yield event.plain_result(result.text)
-
