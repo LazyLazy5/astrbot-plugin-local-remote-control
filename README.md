@@ -23,20 +23,11 @@ Terminal mode:
 /term on
 /term off
 /term status
-/pwd
-/dir [relative-path]
-/cd <relative-path>
-/git status
-/hapi status
-/hapi list
-/codex ls
-/codex new [relative-path]
-/codex use <index|id-prefix>
-/cc ls
-/cc new [relative-path]
-/cc use <index|id-prefix>
-/use <index|id-prefix>
-/send <message>
+dir
+cd <path>
+where codex
+codex --version
+codex
 ```
 
 Codex Bridge:
@@ -47,12 +38,19 @@ Codex Bridge:
 /codexbridge status
 ```
 
+`/term on` starts a persistent shell for the current chat window. On Windows the
+default shell is `cmd.exe`, so messages such as `where codex` and
+`codex --version` are sent directly to that shell. `/term off` closes only this
+terminal mode.
+
 `/codexbridge on` is independent from `/term on`. It binds the latest local Codex
 thread it can find and pushes new assistant messages from Codex rollout JSONL
-files to the current chat window. In this build the bridge is read-only; sending
-messages into the Codex App thread through app-server is intentionally reported
-as unavailable until that path is implemented.
+files to the current chat window. When Codex app-server is available, bridge
+messages can be sent to the bound thread; otherwise it clearly reports that the
+fallback JSONL bridge is read-only.
 
 ## Safety
 
-The plugin does not expose arbitrary shell execution. File commands are jailed under `work_dir`. `/git status` uses a fixed argv without `shell=True`.
+`/term on` intentionally exposes a real shell to configured administrators. Treat
+it as equivalent to giving that chat window access to the AstrBot host user's
+terminal. Do not add untrusted UIDs to `admin_uids`.
