@@ -61,6 +61,10 @@ def _split_control_command(text: str) -> tuple[str, str]:
     return command, action
 
 
+def _stopped_plain_result(event, text: str):
+    return event.plain_result(text).stop_event()
+
+
 try:
     from astrbot.api import AstrBotConfig, logger
     from astrbot.api.event import AstrMessageEvent, MessageChain, filter
@@ -202,8 +206,9 @@ if ASTROBOT_AVAILABLE:
 
         @filter.command("term")
         async def cmd_term(self, event: AstrMessageEvent, action: str = ""):
+            event.stop_event()
             if not self._is_admin(event):
-                yield event.plain_result("此命令仅限管理员使用")
+                yield _stopped_plain_result(event, "此命令仅限管理员使用")
                 return
             action = (action or "").strip().lower()
             umo = event.unified_msg_origin
@@ -214,31 +219,33 @@ if ASTROBOT_AVAILABLE:
                 text = "Terminal mode on\n当前窗口已连接到系统终端。输入 /term off 退出。"
                 if banner:
                     text += f"\n\n{banner}"
-                yield event.plain_result(text)
+                yield _stopped_plain_result(event, text)
             elif action == "off":
                 await self.mode_store.disable_terminal(umo)
                 await self._close_terminal(umo)
-                yield event.plain_result("Terminal mode off")
+                yield _stopped_plain_result(event, "Terminal mode off")
             elif action == "status":
                 bridge = "on" if self.mode_store.is_bridge(umo) else "off"
                 term = "on" if self.mode_store.is_terminal(umo) else "off"
                 cwd = self._state_for(umo).cwd
-                yield event.plain_result(f"Terminal: {term}\nCodex Bridge: {bridge}\ncwd: {cwd}")
+                yield _stopped_plain_result(event, f"Terminal: {term}\nCodex Bridge: {bridge}\ncwd: {cwd}")
             else:
-                yield event.plain_result("用法: /term on | /term off | /term status")
+                yield _stopped_plain_result(event, "用法: /term on | /term off | /term status")
 
         @filter.command("codexbridge")
         async def cmd_codexbridge(self, event: AstrMessageEvent, action: str = ""):
+            event.stop_event()
             if not self._is_admin(event):
-                yield event.plain_result("此命令仅限管理员使用")
+                yield _stopped_plain_result(event, "此命令仅限管理员使用")
                 return
             async for result in self._handle_codexbridge(event, action):
                 yield result
 
         @filter.command("codexbrideg")
         async def cmd_codexbridge_typo(self, event: AstrMessageEvent, action: str = ""):
+            event.stop_event()
             if not self._is_admin(event):
-                yield event.plain_result("此命令仅限管理员使用")
+                yield _stopped_plain_result(event, "此命令仅限管理员使用")
                 return
             async for result in self._handle_codexbridge(event, action):
                 yield result
@@ -248,14 +255,14 @@ if ASTROBOT_AVAILABLE:
             umo = event.unified_msg_origin
             if action == "on":
                 await self.mode_store.enable_bridge(umo)
-                yield event.plain_result(await self.bridge.enable(umo))
+                yield _stopped_plain_result(event, await self.bridge.enable(umo))
             elif action == "off":
                 await self.mode_store.disable_bridge(umo)
-                yield event.plain_result(await self.bridge.disable(umo))
+                yield _stopped_plain_result(event, await self.bridge.disable(umo))
             elif action == "status":
-                yield event.plain_result(await self.bridge.status(umo))
+                yield _stopped_plain_result(event, await self.bridge.status(umo))
             else:
-                yield event.plain_result("用法: /codexbridge on | /codexbridge off | /codexbridge status")
+                yield _stopped_plain_result(event, "用法: /codexbridge on | /codexbridge off | /codexbridge status")
 
         @filter.event_message_type(filter.EventMessageType.ALL, priority=50)
         async def intercept_terminal(self, event: AstrMessageEvent):
@@ -271,21 +278,29 @@ if ASTROBOT_AVAILABLE:
             if command == "term" and action == "off":
                 await self.mode_store.disable_terminal(umo)
                 await self._close_terminal(umo)
-                yield event.plain_result("Terminal mode off")
+                yield _stopped_plain_result(event, "Terminal mode off")
                 return
             if command == "term" and action == "status":
                 bridge = "on" if self.mode_store.is_bridge(umo) else "off"
                 term = "on" if self.mode_store.is_terminal(umo) else "off"
                 running = "running" if (umo in self.terminals and self.terminals[umo].is_running) else "stopped"
-                yield event.plain_result(f"Terminal: {term} ({running})\nCodex Bridge: {bridge}")
+                yield _stopped_plain_result(event, f"Terminal: {term} ({running})\nCodex Bridge: {bridge}")
                 return
             if command == "codexbridge":
                 async for result in self._handle_codexbridge(event, action):
                     yield result
+                return
+            if command == "codex" and not action:
+                yield _stopped_plain_result(
+                    event,
+                    "当前微信终端是管道模式，不是 TTY，裸 codex 交互界面无法启动。\n"
+                    "可用: codex --version\n"
+                    "建议: 使用 /codexbridge on 接收 Codex App 推送，或继续用 HAPI/真实桌面终端启动交互式 Codex。"
+                )
                 return
 
             session = await self._terminal_for(umo)
             await session.send_line(text)
             output = await session.collect_output(timeout=2.0)
             if output:
-                yield event.plain_result(output)
+                yield _stopped_plain_result(event, output)

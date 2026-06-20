@@ -28,6 +28,7 @@ def test_default_shell_command_uses_cmd_on_windows():
     command = default_shell_command()
 
     if os.name == "nt":
-        assert command[0].lower().endswith("cmd.exe")
+        assert command[:3] == ["cmd.exe", "/Q", "/K"]
+        assert "prompt $P$G" in command
     else:
         assert command[0] in {"/bin/sh", "sh"}

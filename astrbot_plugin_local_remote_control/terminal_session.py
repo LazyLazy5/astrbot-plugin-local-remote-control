@@ -9,7 +9,7 @@ from pathlib import Path
 
 def default_shell_command() -> list[str]:
     if os.name == "nt":
-        return ["cmd.exe"]
+        return ["cmd.exe", "/Q", "/K", "prompt $P$G"]
     return ["/bin/sh" if Path("/bin/sh").exists() else "sh"]
 
 

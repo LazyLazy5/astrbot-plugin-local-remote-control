@@ -58,3 +58,9 @@ def test_control_commands_accept_slashless_text_inside_terminal_mode():
 def test_control_commands_accept_codexbridge_typo_alias():
     assert _split_control_command("/codexbrideg on") == ("codexbridge", "on")
     assert _split_control_command("codex brideg off") == ("codexbridge", "off")
+
+
+def test_bare_codex_is_recognized_as_control_hint_inside_terminal_mode():
+    assert _split_control_command("codex") == ("codex", "")
+    assert _split_control_command("/codex") == ("codex", "")
+    assert _split_control_command("codex --version") == ("codex", "--version")
