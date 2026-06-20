@@ -64,3 +64,5 @@ def test_bare_codex_is_recognized_as_control_hint_inside_terminal_mode():
     assert _split_control_command("codex") == ("codex", "")
     assert _split_control_command("/codex") == ("codex", "")
     assert _split_control_command("codex --version") == ("codex", "--version")
+    assert _split_control_command("claude") == ("claude", "")
+    assert _split_control_command("claude --version") == ("claude", "--version")

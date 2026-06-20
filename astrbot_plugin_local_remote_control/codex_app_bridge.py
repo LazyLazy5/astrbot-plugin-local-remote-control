@@ -12,6 +12,7 @@ class BridgeBinding:
     thread_id: str
     rollout_path: Path
     offset: int
+    pending_offset: int | None = None
 
 
 class AppServerLike(Protocol):
@@ -232,18 +233,28 @@ class CodexAppBridge:
             size = binding.rollout_path.stat().st_size
             if size < binding.offset:
                 binding.offset = 0
+                binding.pending_offset = None
             if size == binding.offset:
                 continue
             with binding.rollout_path.open("r", encoding="utf-8", errors="replace") as f:
                 f.seek(binding.offset)
                 chunk = f.read()
-                binding.offset = f.tell()
-            await self.kv.put_kv_data(f"codexbridge_offset_{umo}", binding.offset)
+                binding.pending_offset = f.tell()
+            seen_texts: set[str] = set()
             for line in chunk.splitlines():
                 text = self.extract_assistant_text(line)
-                if text:
+                if text and text not in seen_texts:
+                    seen_texts.add(text)
                     notifications.append((umo, f"[Codex App]\n{text}"))
         return notifications
+
+    async def ack(self, umo: str) -> None:
+        binding = self.bindings.get(umo)
+        if not binding or binding.pending_offset is None:
+            return
+        binding.offset = binding.pending_offset
+        binding.pending_offset = None
+        await self.kv.put_kv_data(f"codexbridge_offset_{umo}", binding.offset)
 
     @staticmethod
     def extract_assistant_text(line: str) -> str:
@@ -252,6 +263,9 @@ class CodexAppBridge:
         except json.JSONDecodeError:
             return ""
         payload = item.get("payload") or {}
+        if item.get("type") == "event_msg" and payload.get("type") == "agent_message":
+            message = payload.get("message")
+            return message.strip() if isinstance(message, str) else ""
         if item.get("type") != "response_item":
             return ""
         if payload.get("type") != "message":

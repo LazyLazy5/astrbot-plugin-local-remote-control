@@ -2,6 +2,7 @@ import asyncio
 import json
 
 from astrbot_plugin_local_remote_control.codex_app_bridge import CodexAppBridge
+from astrbot_plugin_local_remote_control.main import _split_message_chunks
 
 
 class FakeKv:
@@ -101,3 +102,69 @@ def test_poll_reads_only_new_assistant_messages(tmp_path):
     messages = run(bridge.poll_once())
 
     assert messages == [("umo", "[Codex App]\nnew reply")]
+
+
+def test_extracts_agent_message_events():
+    line = json.dumps(
+        {
+            "type": "event_msg",
+            "payload": {
+                "type": "agent_message",
+                "message": "progress update",
+                "phase": "commentary",
+            },
+        }
+    )
+
+    assert CodexAppBridge.extract_assistant_text(line) == "progress update"
+
+
+def test_poll_does_not_commit_offset_until_ack(tmp_path):
+    codex_home = tmp_path / ".codex"
+    thread_id = "019ee497-9203-7cf0-b071-a37dfe0f4733"
+    rollout = codex_home / "sessions" / "2026" / "06" / "20" / f"rollout-demo-{thread_id}.jsonl"
+    write_jsonl(rollout, [])
+    initial_offset = rollout.stat().st_size
+    bridge = CodexAppBridge(FakeKv(), codex_home=codex_home)
+    bridge.windows.add("umo")
+    bridge.bindings["umo"] = bridge.create_binding(thread_id, rollout, initial_offset)
+    with rollout.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "new reply"}]}}) + "\n")
+
+    messages = run(bridge.poll_once())
+
+    assert messages == [("umo", "[Codex App]\nnew reply")]
+    assert bridge.bindings["umo"].offset == initial_offset
+    assert bridge.kv.data.get("codexbridge_offset_umo") is None
+
+    run(bridge.ack("umo"))
+
+    assert bridge.bindings["umo"].offset == rollout.stat().st_size
+    assert bridge.kv.data["codexbridge_offset_umo"] == rollout.stat().st_size
+
+
+def test_poll_deduplicates_agent_message_and_response_message(tmp_path):
+    codex_home = tmp_path / ".codex"
+    thread_id = "019ee497-9203-7cf0-b071-a37dfe0f4733"
+    rollout = codex_home / "sessions" / "2026" / "06" / "20" / f"rollout-demo-{thread_id}.jsonl"
+    write_jsonl(rollout, [])
+    bridge = CodexAppBridge(FakeKv(), codex_home=codex_home)
+    bridge.windows.add("umo")
+    bridge.bindings["umo"] = bridge.create_binding(thread_id, rollout, rollout.stat().st_size)
+    with rollout.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "event_msg", "payload": {"type": "agent_message", "message": "same text", "phase": "commentary"}}) + "\n")
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "same text"}]}}) + "\n")
+
+    messages = run(bridge.poll_once())
+
+    assert messages == [("umo", "[Codex App]\nsame text")]
+
+
+def test_split_message_chunks_preserves_prefix_and_limits_size():
+    text = "[Codex App]\n" + ("x" * 2500)
+
+    chunks = _split_message_chunks(text, limit=1000)
+
+    assert len(chunks) == 3
+    assert all(len(chunk) <= 1000 for chunk in chunks)
+    assert chunks[0].startswith("[Codex App]\n")

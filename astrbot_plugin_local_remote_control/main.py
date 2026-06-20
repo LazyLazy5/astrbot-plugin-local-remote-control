@@ -65,6 +65,12 @@ def _stopped_plain_result(event, text: str):
     return event.plain_result(text).stop_event()
 
 
+def _split_message_chunks(text: str, *, limit: int = 1200) -> list[str]:
+    if len(text) <= limit:
+        return [text]
+    return [text[i:i + limit].rstrip() for i in range(0, len(text), limit)]
+
+
 try:
     from astrbot.api import AstrBotConfig, logger
     from astrbot.api.event import AstrMessageEvent, MessageChain, filter
@@ -144,9 +150,15 @@ if ASTROBOT_AVAILABLE:
         async def _bridge_poll_loop(self):
             while True:
                 try:
-                    for umo, text in await self.bridge.poll_once():
-                        chain = MessageChain().message(text)
-                        await self.context.send_message(umo, chain)
+                    pending = await self.bridge.poll_once()
+                    sent_by_umo: set[str] = set()
+                    for umo, text in pending:
+                        for chunk in _split_message_chunks(text):
+                            chain = MessageChain().message(chunk)
+                            await self.context.send_message(umo, chain)
+                        sent_by_umo.add(umo)
+                    for umo in sent_by_umo:
+                        await self.bridge.ack(umo)
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
@@ -290,12 +302,12 @@ if ASTROBOT_AVAILABLE:
                 async for result in self._handle_codexbridge(event, action):
                     yield result
                 return
-            if command == "codex" and not action:
+            if command in ("codex", "claude") and not action:
                 yield _stopped_plain_result(
                     event,
-                    "当前微信终端是管道模式，不是 TTY，裸 codex 交互界面无法启动。\n"
-                    "可用: codex --version\n"
-                    "建议: 使用 /codexbridge on 接收 Codex App 推送，或继续用 HAPI/真实桌面终端启动交互式 Codex。"
+                    f"当前微信终端是管道模式，不是 TTY，裸 {command} 交互界面无法正常启动。\n"
+                    f"可用: {command} --version\n"
+                    "建议: 使用 /codexbridge on 接收 Codex App 推送，或通过 HAPI/真实桌面终端启动交互式 CLI。"
                 )
                 return
 
