@@ -1,0 +1,28 @@
+{
+  "admin_uids": {
+    "description": "允许使用终端模式的发送者 ID 列表；留空则使用 AstrBot 全局管理员",
+    "type": "list",
+    "default": []
+  },
+  "work_dir": {
+    "description": "路径沙盒根目录；留空则使用插件目录下 workspace",
+    "type": "string",
+    "default": ""
+  },
+  "allow_git": {
+    "description": "是否允许 /git status",
+    "type": "bool",
+    "default": true
+  },
+  "hapi_connector_plugin_name": {
+    "description": "HAPI 连接器插件名",
+    "type": "string",
+    "default": "astrbot_plugin_hapi_connector"
+  },
+  "enable_codex_app_bridge": {
+    "description": "是否允许使用 /codexbridge on",
+    "type": "bool",
+    "default": true
+  }
+}
+

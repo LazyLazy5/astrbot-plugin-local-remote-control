@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+.env
+config.json
+*.token
+*.log
+workspace/
+astrbot_plugin_local_remote_control/workspace/
+local_state/

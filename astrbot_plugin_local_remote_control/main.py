@@ -1,0 +1,191 @@
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from .codex_app_bridge import CodexAppBridge
+from .commands import CommandDispatcher, TerminalState
+from .hapi_bridge import HapiBridge
+from .safe_shell import SafeShell
+
+
+class ModeStore:
+    def __init__(self, kv):
+        self.kv = kv
+        self.terminal_windows: set[str] = set()
+        self.bridge_windows: set[str] = set()
+
+    async def load(self):
+        terminals = await self.kv.get_kv_data("terminal_windows", [])
+        bridges = await self.kv.get_kv_data("codexbridge_windows", [])
+        self.terminal_windows = {str(x) for x in terminals or []}
+        self.bridge_windows = {str(x) for x in bridges or []}
+
+    def is_terminal(self, umo: str) -> bool:
+        return umo in self.terminal_windows
+
+    def is_bridge(self, umo: str) -> bool:
+        return umo in self.bridge_windows
+
+    async def enable_terminal(self, umo: str):
+        self.terminal_windows.add(umo)
+        await self.kv.put_kv_data("terminal_windows", sorted(self.terminal_windows))
+
+    async def disable_terminal(self, umo: str):
+        self.terminal_windows.discard(umo)
+        await self.kv.put_kv_data("terminal_windows", sorted(self.terminal_windows))
+
+    async def enable_bridge(self, umo: str):
+        self.bridge_windows.add(umo)
+        await self.kv.put_kv_data("codexbridge_windows", sorted(self.bridge_windows))
+
+    async def disable_bridge(self, umo: str):
+        self.bridge_windows.discard(umo)
+        await self.kv.put_kv_data("codexbridge_windows", sorted(self.bridge_windows))
+
+
+def _split_command(text: str) -> tuple[str, str]:
+    parts = (text or "").strip().split(maxsplit=1)
+    if not parts:
+        return "", ""
+    return parts[0].lower(), parts[1].strip().lower() if len(parts) > 1 else ""
+
+
+try:
+    from astrbot.api import AstrBotConfig, logger
+    from astrbot.api.event import AstrMessageEvent, filter
+    from astrbot.api.star import Context, Star, register
+
+    ASTROBOT_AVAILABLE = True
+except Exception:  # pragma: no cover - exercised only outside AstrBot
+    AstrBotConfig = Any  # type: ignore
+    AstrMessageEvent = Any  # type: ignore
+    Context = Any  # type: ignore
+    Star = object  # type: ignore
+    ASTROBOT_AVAILABLE = False
+
+
+if ASTROBOT_AVAILABLE:
+
+    @register(
+        "astrbot_plugin_local_remote_control",
+        "local",
+        "窗口级终端模式与 Codex App Bridge",
+        "0.1.0",
+    )
+    class LocalRemoteControlPlugin(Star):
+        def __init__(self, context: Context, config: AstrBotConfig):
+            super().__init__(context)
+            self.context = context
+            self.config = config
+            raw_work_dir = str(config.get("work_dir", "") or "").strip()
+            if raw_work_dir:
+                work_dir = Path(raw_work_dir).expanduser().resolve()
+            else:
+                work_dir = Path(__file__).resolve().parent / "workspace"
+            self.shell = SafeShell(work_dir)
+            self.mode_store = ModeStore(self)
+            self.terminal_states: dict[str, TerminalState] = {}
+            self.hapi = HapiBridge(connector_plugin_name=str(config.get("hapi_connector_plugin_name", "astrbot_plugin_hapi_connector")))
+            self.bridge = CodexAppBridge(
+                self,
+                enabled=bool(config.get("enable_codex_app_bridge", True)),
+            )
+            self.dispatcher = CommandDispatcher(
+                self.shell,
+                self.hapi,
+                self.bridge,
+                allow_git=bool(config.get("allow_git", True)),
+            )
+
+        async def initialize(self):
+            await self.mode_store.load()
+            await self.bridge.load()
+            await self.hapi.init()
+            logger.info("Local Remote Control initialized")
+
+        async def terminate(self):
+            await self.hapi.close()
+
+        def _is_admin(self, event: AstrMessageEvent) -> bool:
+            configured = [str(x) for x in self.config.get("admin_uids", []) or []]
+            if configured:
+                return str(event.get_sender_id()) in configured
+            astrbot_config = self.context.get_config(event.unified_msg_origin)
+            admin_ids = [str(x) for x in astrbot_config.get("admins_id", [])]
+            return str(event.get_sender_id()) in admin_ids
+
+        def _state_for(self, umo: str) -> TerminalState:
+            state = self.terminal_states.get(umo)
+            if state is None:
+                state = TerminalState(cwd=self.shell.root)
+                self.terminal_states[umo] = state
+            return state
+
+        @filter.command("term")
+        async def cmd_term(self, event: AstrMessageEvent, action: str = ""):
+            if not self._is_admin(event):
+                yield event.plain_result("此命令仅限管理员使用")
+                return
+            action = (action or "").strip().lower()
+            umo = event.unified_msg_origin
+            if action == "on":
+                await self.mode_store.enable_terminal(umo)
+                self._state_for(umo)
+                yield event.plain_result("Terminal mode on")
+            elif action == "off":
+                await self.mode_store.disable_terminal(umo)
+                yield event.plain_result("Terminal mode off")
+            elif action == "status":
+                bridge = "on" if self.mode_store.is_bridge(umo) else "off"
+                term = "on" if self.mode_store.is_terminal(umo) else "off"
+                cwd = self._state_for(umo).cwd
+                yield event.plain_result(f"Terminal: {term}\nCodex Bridge: {bridge}\ncwd: {cwd}")
+            else:
+                yield event.plain_result("用法: /term on | /term off | /term status")
+
+        @filter.command("codexbridge")
+        async def cmd_codexbridge(self, event: AstrMessageEvent, action: str = ""):
+            if not self._is_admin(event):
+                yield event.plain_result("此命令仅限管理员使用")
+                return
+            async for result in self._handle_codexbridge(event, action):
+                yield result
+
+        async def _handle_codexbridge(self, event: AstrMessageEvent, action: str = ""):
+            action = (action or "").strip().lower()
+            umo = event.unified_msg_origin
+            if action == "on":
+                await self.mode_store.enable_bridge(umo)
+                yield event.plain_result(await self.bridge.enable(umo))
+            elif action == "off":
+                await self.mode_store.disable_bridge(umo)
+                yield event.plain_result(await self.bridge.disable(umo))
+            elif action == "status":
+                yield event.plain_result(await self.bridge.status(umo))
+            else:
+                yield event.plain_result("用法: /codexbridge on | /codexbridge off | /codexbridge status")
+
+        @filter.event_message_type(filter.EventMessageType.ALL, priority=50)
+        async def intercept_terminal(self, event: AstrMessageEvent):
+            umo = event.unified_msg_origin
+            if not self.mode_store.is_terminal(umo):
+                return
+            event.stop_event()
+            if not self._is_admin(event):
+                return
+
+            text = (event.message_str or "").strip()
+            command, action = _split_command(text)
+            if command == "/term" and action == "off":
+                await self.mode_store.disable_terminal(umo)
+                yield event.plain_result("Terminal mode off")
+                return
+            if command == "/codexbridge":
+                async for result in self._handle_codexbridge(event, action):
+                    yield result
+                return
+
+            result = await self.dispatcher.dispatch(umo, text, self._state_for(umo))
+            yield event.plain_result(result.text)
+
