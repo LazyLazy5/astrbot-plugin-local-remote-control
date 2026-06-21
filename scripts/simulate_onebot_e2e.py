@@ -392,8 +392,8 @@ def _indent(text: str) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Simulate a OneBot reverse-WS client against a running AstrBot.")
     parser.add_argument("--url", default="ws://127.0.0.1:6199/ws")
-    parser.add_argument("--self-id", type=int, default=1904439708)
-    parser.add_argument("--user-id", type=int, default=1503663035)
+    parser.add_argument("--self-id", type=int, default=1000000000)
+    parser.add_argument("--user-id", type=int, default=1000000001)
     parser.add_argument("--nickname", default="E2E")
     parser.add_argument("--timeout", type=float, default=20.0)
     parser.add_argument("--command-timeout", type=float, default=8.0)

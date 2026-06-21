@@ -42,7 +42,7 @@ python -m compileall -q astrbot_plugin_local_remote_control scripts tests
 strict fake OneBot E2E 已通过，真实 NapCat 同时连接时仍能捕获 bridge 输出：
 
 ```powershell
-python scripts\simulate_onebot_e2e.py --timeout 90 --command-timeout 10 --thread-target 019eda31 --status-after-probe --self-id 1904439708 --dual-role --strict-ws-output
+python scripts\simulate_onebot_e2e.py --timeout 90 --command-timeout 10 --thread-target <thread_id_or_prefix> --status-after-probe --self-id <bot_self_id> --user-id <tester_user_id> --dual-role --strict-ws-output
 ```
 
 真实插件 UI marker 链路已通过：
@@ -87,8 +87,8 @@ Copy-Item -Recurse -Force .\astrbot_plugin_local_remote_control "$env:USERPROFIL
 或者在开发时只同步源码文件到运行目录：
 
 ```powershell
-$src = 'C:\Users\15036\Desktop\Study\Strange idea\Wechat_Controll\astrbot_plugin_local_remote_control'
-$dst = 'C:\Users\15036\.astrbot\data\plugins\astrbot_plugin_local_remote_control'
+$src = Join-Path (Get-Location) 'astrbot_plugin_local_remote_control'
+$dst = Join-Path $env:USERPROFILE '.astrbot\data\plugins\astrbot_plugin_local_remote_control'
 Remove-Item -LiteralPath $dst -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
 ```
@@ -115,25 +115,25 @@ Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
 - 使用 QQ/微信前，必须把对应 UID 加入 AstrBot 管理员列表。
 - `admin_uids` 只作为兼容/二次校验，不建议替代 AstrBot 全局管理员配置。
 
-当前 QQ OneBot UID 示例：
+QQ OneBot UID 示例：
 
 ```text
-UMO: onebot_napcat:FriendMessage:1503663035
-UID: 1503663035
+UMO: onebot_napcat:FriendMessage:<your_qq_uid>
+UID: <your_qq_uid>
 ```
 
-当前微信 UID 示例：
+微信 UID 示例：
 
 ```text
-UMO: weixin_personal_tnco:FriendMessage:o9cq80zn-W8moly-xygJ7b3yUCkw@im.wechat
-UID: o9cq80zn-W8moly-xygJ7b3yUCkw@im.wechat
+UMO: weixin_personal_tnco:FriendMessage:<your_wechat_uid>
+UID: <your_wechat_uid>
 ```
 
 ## QQ / OneBot / NapCat
 
 推荐使用 NapCatQQ 提供 OneBot v11 反向 WebSocket，不推荐把 QQ 官方机器人 WebSocket 当作高频推送主通道。
 
-当前本机接入方式：
+本机接入方式示例：
 
 ```text
 AstrBot OneBot reverse WS: ws://127.0.0.1:6199/ws
@@ -325,7 +325,7 @@ python -m compileall -q astrbot_plugin_local_remote_control scripts tests
 严格 fake OneBot E2E：
 
 ```powershell
-python scripts\simulate_onebot_e2e.py --timeout 90 --command-timeout 10 --thread-target 019eda31 --status-after-probe --self-id 1904439708 --dual-role --strict-ws-output
+python scripts\simulate_onebot_e2e.py --timeout 90 --command-timeout 10 --thread-target <thread_id_or_prefix> --status-after-probe --self-id <bot_self_id> --user-id <tester_user_id> --dual-role --strict-ws-output
 ```
 
 这个脚本不经过真实 NapCat，而是直接模拟 OneBot reverse WebSocket 客户端连接 AstrBot `6199`。

@@ -1,5 +1,14 @@
 @echo off
 chcp 65001 >nul
-cd /d "C:\Users\15036\Tools\NapCat\OneKey-v4.18.7\NapCat.44498.Shell"
+if "%NAPCAT_DIR%"=="" (
+  echo Please set NAPCAT_DIR to your NapCat directory.
+  echo Example: set "NAPCAT_DIR=C:\path\to\NapCat"
+  exit /b 1
+)
+if not exist "%NAPCAT_DIR%\NapCatWinBootMain.exe" (
+  echo NapCatWinBootMain.exe not found in "%NAPCAT_DIR%".
+  exit /b 1
+)
+cd /d "%NAPCAT_DIR%"
 ".\NapCatWinBootMain.exe"
 pause
