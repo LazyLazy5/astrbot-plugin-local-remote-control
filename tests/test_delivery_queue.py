@@ -205,7 +205,7 @@ def test_weixin_ret_minus_two_pauses_window_until_user_refresh():
 
 def test_qq_send_failure_uses_backoff_without_user_refresh():
     queue = DeliveryQueue(FakeKv(), now=lambda: 1000.0)
-    umo = "onebot_napcat:FriendMessage:1503663035"
+    umo = "onebot_napcat:FriendMessage:1000000001"
 
     run(queue.enqueue(umo, "term", "first", dedupe_key="one"))
     run(queue.mark_failed_umo(umo, "send failed"))
@@ -217,17 +217,17 @@ def test_qq_send_failure_uses_backoff_without_user_refresh():
 
 def test_onebot_direct_payload_includes_self_id_for_private_delivery():
     payload = _onebot_direct_payload(
-        "onebot_napcat:FriendMessage:1503663035",
+        "onebot_napcat:FriendMessage:1000000001",
         [{"type": "text", "data": {"text": "hello"}}],
-        "1904439708",
+        "1000000000",
     )
 
     assert payload == {
         "action": "send_private_msg",
         "params": {
-            "user_id": 1503663035,
+            "user_id": 1000000001,
             "message": [{"type": "text", "data": {"text": "hello"}}],
-            "self_id": "1904439708",
+            "self_id": "1000000000",
         },
     }
 
@@ -236,7 +236,7 @@ def test_onebot_direct_payload_includes_self_id_for_group_delivery():
     payload = _onebot_direct_payload(
         "onebot_napcat:GroupMessage:123456",
         [{"type": "text", "data": {"text": "hello"}}],
-        "1904439708",
+        "1000000000",
     )
 
     assert payload == {
@@ -244,7 +244,7 @@ def test_onebot_direct_payload_includes_self_id_for_group_delivery():
         "params": {
             "group_id": 123456,
             "message": [{"type": "text", "data": {"text": "hello"}}],
-            "self_id": "1904439708",
+            "self_id": "1000000000",
         },
     }
 
@@ -273,9 +273,9 @@ def test_send_delivery_text_routes_onebot_with_remembered_self_id():
     run(
         _send_delivery_text(
             FakeContext(),
-            "onebot_napcat:FriendMessage:1503663035",
+            "onebot_napcat:FriendMessage:1000000001",
             "hello",
-            "1904439708",
+            "1000000000",
         )
     )
 
@@ -284,8 +284,8 @@ def test_send_delivery_text_routes_onebot_with_remembered_self_id():
             "send_private_msg",
             {
                 "message": [{"type": "text", "data": {"text": "hello"}}],
-                "self_id": "1904439708",
-                "user_id": 1503663035,
+                "self_id": "1000000000",
+                "user_id": 1000000001,
             },
         )
     ]
