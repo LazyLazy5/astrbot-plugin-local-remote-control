@@ -218,7 +218,7 @@ class CodexStdioAppServerClient(CodexAppServerClient):
                     "params": {
                         "clientInfo": {
                             "name": "astrbot_plugin_local_remote_control",
-                            "version": "0.3.0",
+                            "version": "0.3.1",
                         },
                         "capabilities": {"experimentalApi": True},
                     },
@@ -425,7 +425,7 @@ class PersistentCodexStdioAppServerClient(CodexStdioAppServerClient):
                 "params": {
                     "clientInfo": {
                         "name": "astrbot_plugin_local_remote_control",
-                        "version": "0.3.0",
+                        "version": "0.3.1",
                     },
                     "capabilities": {"experimentalApi": True},
                 },

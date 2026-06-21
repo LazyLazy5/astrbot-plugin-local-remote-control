@@ -50,7 +50,7 @@ if ASTROBOT_AVAILABLE:
         "astrbot_plugin_local_remote_control",
         "local",
         "窗口级终端模式、HAPI 托管 Codex/Claude Code 与 Codex App Bridge",
-        "0.3.0",
+        "0.3.1",
     )
     class LocalRemoteControlPlugin(Star):
         def __init__(self, context: Context, config: AstrBotConfig):
