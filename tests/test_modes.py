@@ -9,6 +9,7 @@ from astrbot_plugin_local_remote_control.main import (
     _is_bridge_ack_text,
     _is_self_event,
     _normalize_terminal_dispatch_text,
+    _fixed_auto_reply_text,
     _should_ignore_bridge_input_text,
     _should_dispatch_terminal_text,
     _split_control_command,
@@ -79,6 +80,13 @@ def test_control_commands_accept_slashless_text_inside_terminal_mode():
     assert _split_control_command("/term agent codex .") == ("term", "agent codex .")
     assert _split_control_command("/codexbridge on") == ("codexbridge", "on")
     assert _split_control_command("codexbridge off") == ("codexbridge", "off")
+
+
+def test_control_commands_accept_cb_alias_for_codexbridge():
+    assert _split_control_command("/cb on") == ("codexbridge", "on")
+    assert _split_control_command("cb off") == ("codexbridge", "off")
+    assert _split_control_command("/cb queue clear") == ("codexbridge", "queue clear")
+    assert _action_from_full_command_text("/cb status", "codexbridge", "") == "status"
 
 
 def test_control_commands_use_first_nonempty_line():
@@ -203,3 +211,10 @@ def test_blank_bridge_input_is_ignored_before_stop_event():
 
 def test_bridge_ack_prefix_is_ignored_even_with_whitespace():
     assert _should_ignore_bridge_input_text("  sent to Codex App thread 019ee497 turn 019ee66c  ")
+
+
+def test_fixed_auto_reply_matches_exact_trigger_only():
+    assert _fixed_auto_reply_text("wt是sb") == "wt确实是sb"
+    assert _fixed_auto_reply_text("  wt是sb  ") == "wt确实是sb"
+    assert _fixed_auto_reply_text("wt是sb吗") is None
+    assert _fixed_auto_reply_text("请问wt是sb") is None

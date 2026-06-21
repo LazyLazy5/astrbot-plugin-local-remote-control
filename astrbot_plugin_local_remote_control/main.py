@@ -11,6 +11,7 @@ from .common.routing import (
     bridge_should_dispatch_terminal_command as _bridge_should_dispatch_terminal_command,
     command_text as _command_text,
     deliver_due_items_once as _deliver_due_items_once,
+    fixed_auto_reply_text as _fixed_auto_reply_text,
     is_bridge_ack_text as _is_bridge_ack_text,
     is_self_event as _is_self_event,
     normalize_terminal_dispatch_text as _normalize_terminal_dispatch_text,
@@ -141,6 +142,18 @@ if ASTROBOT_AVAILABLE:
             async for result in self.codexbridge.handle_command(event, action):
                 yield result
 
+        @filter.command("cb")
+        async def cmd_codexbridge_alias(self, event: AstrMessageEvent, action: str = ""):
+            if _is_self_event(event):
+                return
+            self._remember_event_route(event)
+            event.stop_event()
+            if not self._is_admin(event):
+                yield _stopped_plain_result(event, "此命令仅限管理员使用")
+                return
+            async for result in self.codexbridge.handle_command(event, action):
+                yield result
+
         @filter.command("codexbrideg")
         async def cmd_codexbridge_typo(self, event: AstrMessageEvent, action: str = ""):
             if _is_self_event(event):
@@ -152,6 +165,17 @@ if ASTROBOT_AVAILABLE:
                 return
             async for result in self.codexbridge.handle_command(event, action):
                 yield result
+
+        @filter.event_message_type(filter.EventMessageType.ALL, priority=60)
+        async def intercept_fixed_auto_reply(self, event: AstrMessageEvent):
+            if _is_self_event(event):
+                return
+            reply = _fixed_auto_reply_text(event.message_str or "")
+            if reply is None:
+                return
+            self._remember_event_route(event)
+            event.stop_event()
+            yield _stopped_plain_result(event, reply)
 
         @filter.event_message_type(filter.EventMessageType.ALL, priority=50)
         async def intercept_terminal(self, event: AstrMessageEvent):

@@ -63,6 +63,8 @@ def split_control_command(text: str) -> tuple[str, str]:
         return "codexbridge", action.removeprefix("bridge ").strip()
     if command == "codex" and action.startswith("brideg "):
         return "codexbridge", action.removeprefix("brideg ").strip()
+    if command == "cb":
+        command = "codexbridge"
     if command == "codexbrideg":
         command = "codexbridge"
     return command, action
@@ -124,6 +126,12 @@ def is_bridge_ack_text(text: str) -> bool:
 def should_ignore_bridge_input_text(text: str) -> bool:
     normalized = (text or "").strip()
     return not normalized or is_bridge_ack_text(normalized)
+
+
+def fixed_auto_reply_text(text: str) -> str | None:
+    if (text or "").strip() == "wt是sb":
+        return "wt确实是sb"
+    return None
 
 
 def is_self_event(event) -> bool:

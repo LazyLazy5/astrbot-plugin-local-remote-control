@@ -5,7 +5,7 @@ AstrBot 远程开发控制插件。它把 QQ、微信等聊天窗口变成一个
 主要功能：
 
 - `/term`：窗口级终端模式，支持本地受限 shell 和 HAPI 托管的 Codex CLI / Claude Code session。
-- `/codexbridge`：连接 Codex App/Desktop thread，把聊天窗口中的消息发送到 Codex App，并把 Codex 输出推回聊天窗口。
+- `/codexbridge`：连接 Codex App/Desktop thread，把聊天窗口中的消息发送到 Codex App，并把 Codex 输出推回聊天窗口；也可简写为 `/cb`。
 - Delivery Queue：后台输出持久化排队，支持重试、分片、失败后恢复。
 - OneBot/NapCat 适配：推荐用于 QQ 持续推送。
 - 微信通道保护：识别微信主动推送受限状态，避免失败消息刷屏。
@@ -80,7 +80,7 @@ Token: 空或按你的 AstrBot 配置填写
 /git status
 ```
 
-### `/codexbridge`
+### `/codexbridge` / `/cb`
 
 ```text
 /codexbridge on
@@ -92,6 +92,8 @@ Token: 空或按你的 AstrBot 配置填写
 /codexbridge ls
 /codexbridge use <序号|id前缀>
 ```
+
+`/cb` 是 `/codexbridge` 的等价简写，例如 `/cb on`、`/cb status`。
 
 普通输入行为：
 
