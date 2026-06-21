@@ -1,7 +1,7 @@
 import asyncio
 import os
 
-from astrbot_plugin_local_remote_control.terminal_session import PersistentTerminalSession, default_shell_command
+from astrbot_plugin_local_remote_control.term.terminal_session import PersistentTerminalSession, default_shell_command
 
 
 def run(coro):

@@ -1,7 +1,7 @@
 import asyncio
 from types import SimpleNamespace
 
-from astrbot_plugin_local_remote_control.delivery_queue import DeliveryQueue, split_delivery_text
+from astrbot_plugin_local_remote_control.common.delivery_queue import DeliveryQueue, split_delivery_text
 from astrbot_plugin_local_remote_control.main import _deliver_due_items_once, _onebot_direct_payload, _send_delivery_text
 
 

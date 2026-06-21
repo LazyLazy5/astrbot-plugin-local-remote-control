@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from astrbot_plugin_local_remote_control.hapi_client import HapiClient, HapiConfig, HapiTermBackend
+from astrbot_plugin_local_remote_control.term.hapi_client import HapiClient, HapiConfig, HapiTermBackend
 
 
 class FakeRawClient:

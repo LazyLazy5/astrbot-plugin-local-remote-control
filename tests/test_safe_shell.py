@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from astrbot_plugin_local_remote_control.safe_shell import SafeShell
+from astrbot_plugin_local_remote_control.term.safe_shell import SafeShell
 
 
 def test_jail_allows_root_child(tmp_path):

@@ -1,6 +1,6 @@
 import asyncio
 
-from astrbot_plugin_local_remote_control.commands import TerminalState
+from astrbot_plugin_local_remote_control.term.commands import TerminalState
 from astrbot_plugin_local_remote_control.main import (
     ModeStore,
     _action_from_full_command_text,

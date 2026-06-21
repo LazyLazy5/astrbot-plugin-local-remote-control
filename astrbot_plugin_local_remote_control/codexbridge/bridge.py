@@ -12,8 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Protocol
 
-from .delivery_queue import DeliveryQueue
-from .platform_strategy import format_platform_status
+from ..common.delivery_queue import DeliveryQueue
+from ..common.platform_strategy import format_platform_status
 
 
 @dataclass

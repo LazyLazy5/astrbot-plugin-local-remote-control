@@ -2,9 +2,9 @@ import asyncio
 import json
 import sys
 
-import astrbot_plugin_local_remote_control.codex_app_bridge as codex_app_bridge
-from astrbot_plugin_local_remote_control.codex_app_bridge import CodexAppBridge
-from astrbot_plugin_local_remote_control.delivery_queue import DeliveryQueue
+import astrbot_plugin_local_remote_control.codexbridge.bridge as codex_app_bridge
+from astrbot_plugin_local_remote_control.codexbridge.bridge import CodexAppBridge
+from astrbot_plugin_local_remote_control.common.delivery_queue import DeliveryQueue
 from astrbot_plugin_local_remote_control.main import _split_message_chunks
 
 

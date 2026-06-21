@@ -1,8 +1,8 @@
 import asyncio
 from pathlib import Path
 
-from astrbot_plugin_local_remote_control.commands import CommandDispatcher, TerminalState
-from astrbot_plugin_local_remote_control.safe_shell import SafeShell
+from astrbot_plugin_local_remote_control.term.commands import CommandDispatcher, TerminalState
+from astrbot_plugin_local_remote_control.term.safe_shell import SafeShell
 
 
 class DummyHapi:

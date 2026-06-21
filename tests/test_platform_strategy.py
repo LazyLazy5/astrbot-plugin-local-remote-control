@@ -1,4 +1,4 @@
-from astrbot_plugin_local_remote_control.platform_strategy import platform_strategy_from_umo
+from astrbot_plugin_local_remote_control.common.platform_strategy import platform_strategy_from_umo
 
 
 def test_aiocqhttp_is_onebot_strategy():
@@ -25,7 +25,7 @@ def test_aiocqhttp_parenthesized_platform_is_onebot_strategy():
 
 
 def test_format_platform_status_includes_note_for_restricted_channel():
-    from astrbot_plugin_local_remote_control.platform_strategy import format_platform_status
+    from astrbot_plugin_local_remote_control.common.platform_strategy import format_platform_status
 
     text = format_platform_status("default_1904439708:FriendMessage:user-openid")
 

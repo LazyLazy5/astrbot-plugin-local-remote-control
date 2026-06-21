@@ -60,6 +60,13 @@ ack: PLUGIN_UI_VISIBILITY_ACK_173345
 - Codex App thread readback 出现 marker。
 - Codex App 前台 UI 已人工确认可见。
 
+内部结构：
+
+- `common/`：共享 delivery queue、OneBot/NapCat 路由、微信刷新状态、命令解析与平台策略。
+- `term/`：`/term` 控制器、HAPI client、本地受限 shell 和 terminal session。
+- `codexbridge/`：`/codexbridge` 控制器与 Codex App Bridge transport/polling。
+- `main.py`：AstrBot 注册、管理员校验、消息优先级和两个 controller 的生命周期协调。
+
 最终清理状态：
 
 ```text
@@ -82,10 +89,8 @@ Copy-Item -Recurse -Force .\astrbot_plugin_local_remote_control "$env:USERPROFIL
 ```powershell
 $src = 'C:\Users\15036\Desktop\Study\Strange idea\Wechat_Controll\astrbot_plugin_local_remote_control'
 $dst = 'C:\Users\15036\.astrbot\data\plugins\astrbot_plugin_local_remote_control'
-$files = @('__init__.py','_conf_schema.json','codex_app_bridge.py','commands.py','delivery_queue.py','hapi_client.py','main.py','metadata.yaml','platform_strategy.py','safe_shell.py','terminal_session.py')
-foreach ($f in $files) {
-  Copy-Item -LiteralPath (Join-Path $src $f) -Destination (Join-Path $dst $f) -Force
-}
+Remove-Item -LiteralPath $dst -Recurse -Force -ErrorAction SilentlyContinue
+Copy-Item -LiteralPath $src -Destination $dst -Recurse -Force
 ```
 
 重载插件可通过 AstrBot WebUI，或调用 dashboard API。
