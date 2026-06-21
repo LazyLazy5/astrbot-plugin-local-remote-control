@@ -6,6 +6,7 @@ data/
 config.json
 *.token
 *.log
+*.zip
 workspace/
 astrbot_plugin_local_remote_control/workspace/
 local_state/

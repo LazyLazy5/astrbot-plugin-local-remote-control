@@ -20,6 +20,13 @@ Copy-Item -Recurse -Force .\astrbot_plugin_local_remote_control "$env:USERPROFIL
 
 然后在 AstrBot WebUI 中重载或启用插件。
 
+## 依赖关系
+
+- [AstrBot](https://github.com/AstrBotDevs/AstrBot)：必需。插件运行在 AstrBot 内，所有功能都依赖 AstrBot。
+- [HAPI](https://github.com/tiann/hapi)：仅 `/term agent codex|cc` 需要。用于托管 Codex CLI / Claude Code 等本机会话；只使用 `/term shell` 或 `/codexbridge` 时可以不配置。
+- [OneBot v11](https://onebots.pages.dev/en/protocol/onebot-v11/)：仅 OneBot 通道需要。用于 AstrBot 与协议端之间的消息收发。
+- [NapCatQQ](https://github.com/NapNeko/NapCatQQ)：仅 QQ / NapCat 接入需要。通常通过 OneBot v11 反向 WebSocket 连接 AstrBot。
+
 ## 配置
 
 插件配置来自 `_conf_schema.json`：
@@ -38,7 +45,7 @@ Copy-Item -Recurse -Force .\astrbot_plugin_local_remote_control "$env:USERPROFIL
 
 ## QQ / OneBot / NapCat
 
-推荐使用 NapCatQQ 的 OneBot v11 反向 WebSocket 作为 QQ 推送通道。
+推荐使用 [NapCatQQ](https://github.com/NapNeko/NapCatQQ) 的 [OneBot v11](https://onebots.pages.dev/en/protocol/onebot-v11/) 反向 WebSocket 作为 QQ 推送通道。
 
 典型配置：
 
