@@ -1269,12 +1269,7 @@ class CodexAppBridge:
             return True
         if "produced a summary of its thinking process" in lowered:
             return True
-        if lowered.startswith("using `") and (
-            "systematic-debugging" in lowered
-            or "test-driven-development" in lowered
-            or "using-superpowers" in lowered
-            or "verification-before-completion" in lowered
-        ):
+        if lowered.startswith("using `") and "`" in lowered[7:]:
             return True
         if "context compact" in lowered or "context transition" in lowered or "compaction" in lowered:
             return True

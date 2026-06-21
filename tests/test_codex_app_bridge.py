@@ -964,7 +964,7 @@ def test_poll_suppresses_internal_codex_context_messages(tmp_path):
     bridge.bindings["umo"] = bridge.create_binding(thread_id, rollout, rollout.stat().st_size)
     with rollout.open("a", encoding="utf-8") as f:
         f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "# AGENTS.md instructions\n<INSTRUCTIONS>\ninternal project instructions\n</INSTRUCTIONS>"}]}}) + "\n")
-        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "commentary", "content": [{"type": "output_text", "text": "Using `systematic-debugging` + `test-driven-development` to diagnose this."}]}}) + "\n")
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "commentary", "content": [{"type": "output_text", "text": "Using `internal-workflow` to diagnose this."}]}}) + "\n")
         f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "commentary", "content": [{"type": "output_text", "text": "Another language model started to solve this problem and produced a summary of its thinking process."}]}}) + "\n")
 
     run(bridge.poll_once())
