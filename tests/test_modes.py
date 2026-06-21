@@ -81,6 +81,12 @@ def test_control_commands_accept_slashless_text_inside_terminal_mode():
     assert _split_control_command("codexbridge off") == ("codexbridge", "off")
 
 
+def test_control_commands_use_first_nonempty_line():
+    assert _split_control_command("\n/codexbridge off\n/codexbridge queue clear") == ("codexbridge", "off")
+    assert _split_control_command("/term on\n你好") == ("term", "on")
+    assert _action_from_full_command_text("\n/term status\n", "term", "") == "status"
+
+
 def test_control_commands_accept_codexbridge_typo_alias():
     assert _split_control_command("/codexbrideg on") == ("codexbridge", "on")
     assert _split_control_command("codex brideg off") == ("codexbridge", "off")
@@ -124,6 +130,7 @@ def test_shell_backend_plain_text_goes_to_dispatcher_for_restricted_handling(tmp
     assert _should_dispatch_terminal_text("echo hi", state)
     assert _should_dispatch_terminal_text("你好", state)
     assert _should_dispatch_terminal_text("/pwd", state)
+    assert not _should_dispatch_terminal_text(" \n ", state)
 
 
 def test_slashless_safe_shell_commands_are_normalized_in_shell_backend(tmp_path):

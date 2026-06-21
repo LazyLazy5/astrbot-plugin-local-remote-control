@@ -48,7 +48,13 @@ class ModeStore:
 
 
 def split_control_command(text: str) -> tuple[str, str]:
-    parts = (text or "").strip().split(maxsplit=1)
+    first_line = ""
+    for line in (text or "").splitlines():
+        stripped = line.strip()
+        if stripped:
+            first_line = stripped
+            break
+    parts = first_line.split(maxsplit=1)
     if not parts:
         return "", ""
     command = parts[0].lstrip("/").lower()
@@ -75,7 +81,7 @@ def split_message_chunks(text: str, *, limit: int = 1200) -> list[str]:
 def should_dispatch_terminal_text(text: str, state) -> bool:
     raw = (text or "").strip()
     if not raw:
-        return True
+        return False
     return True
 
 

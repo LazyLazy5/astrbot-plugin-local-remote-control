@@ -689,7 +689,7 @@ class CodexAppBridge:
 
     async def send_to_bound_thread(self, umo: str, text: str) -> tuple[bool, str]:
         if umo not in self.windows:
-            return False, "No selected HAPI session. Use /codex new, /cc new, /use, or /codexbridge on."
+            return False, "Codex Bridge is not enabled for this window. Use /codexbridge on first."
         app_thread_id = self.app_bindings.get(umo)
         if app_thread_id:
             await self._process_app_server_events()
@@ -816,7 +816,7 @@ class CodexAppBridge:
             text = state.assistant_delta.strip() if method == "turn/completed" else self._event_assistant_text(method, params)
             if method == "turn/completed":
                 state.assistant_delta = ""
-            if text:
+            if text and not self._should_suppress_bridge_output_text(text):
                 await self._emit_bridge_output(notifications, umo, bound_thread, "assistant", text)
         return notifications
 
@@ -940,6 +940,12 @@ class CodexAppBridge:
             return True
         key = (umo, normalized)
         now = self._now()
+        stale_before = now - 3600
+        self._send_failure_notice_at = {
+            existing_key: noticed_at
+            for existing_key, noticed_at in self._send_failure_notice_at.items()
+            if noticed_at >= stale_before
+        }
         last = self._send_failure_notice_at.get(key, 0.0)
         if now - last < 30:
             return False
@@ -1139,7 +1145,7 @@ class CodexAppBridge:
                     state = self._turn_state(umo)
                     text = state.assistant_delta.strip()
                     state.assistant_delta = ""
-                    if text:
+                    if text and not self._should_suppress_bridge_output_text(text):
                         await self._emit_bridge_output(notifications, umo, binding.thread_id, "assistant", text)
                     continue
                 role, text = self.extract_visible_text(line)
@@ -1148,12 +1154,15 @@ class CodexAppBridge:
                 if role == "system":
                     await self._emit_bridge_output(notifications, umo, binding.thread_id, role, text)
                 elif role == "user":
-                    if self._is_outbound_echo(umo, text) or self._should_suppress_app_user_text(text):
+                    if self._is_outbound_echo(umo, text) or self._should_suppress_bridge_output_text(text):
                         continue
                     await self._emit_bridge_output(notifications, umo, binding.thread_id, role, text)
                 elif role == "agent" and self._is_jsonl_agent_fragment(line):
-                    self._turn_state(umo).assistant_delta += text
+                    if not self._should_suppress_bridge_output_text(text):
+                        self._turn_state(umo).assistant_delta += text
                 else:
+                    if self._should_suppress_bridge_output_text(text):
+                        continue
                     await self._emit_bridge_output(notifications, umo, binding.thread_id, role, text)
             if self.delivery_queue:
                 await self.ack(umo)
@@ -1247,12 +1256,31 @@ class CodexAppBridge:
         return phase not in {"final", "final_answer", "answer", "completed"}
 
     @staticmethod
-    def _should_suppress_app_user_text(text: str) -> bool:
+    def _should_suppress_bridge_output_text(text: str) -> bool:
         normalized = text.strip()
         if not normalized:
             return True
         lowered = normalized.lower()
         if lowered.startswith("<environment_context>") and lowered.endswith("</environment_context>"):
+            return True
+        if lowered.startswith("# agents.md instructions") or lowered.startswith("<instructions>"):
+            return True
+        if "another language model started to solve this problem" in lowered:
+            return True
+        if "produced a summary of its thinking process" in lowered:
+            return True
+        if lowered.startswith("using `") and (
+            "systematic-debugging" in lowered
+            or "test-driven-development" in lowered
+            or "using-superpowers" in lowered
+            or "verification-before-completion" in lowered
+        ):
+            return True
+        if "context compact" in lowered or "context transition" in lowered or "compaction" in lowered:
+            return True
+        if "<system" in lowered or "</system" in lowered or "<developer" in lowered or "</developer" in lowered:
+            return True
+        if "knowledge cutoff:" in lowered and "current date:" in lowered:
             return True
         if lowered.startswith("[bridge diagnostic]"):
             return True

@@ -631,6 +631,20 @@ def test_read_only_send_failure_notice_is_suppressed_for_30_seconds(tmp_path):
     assert bridge.should_report_send_failure("umo", message) is True
 
 
+def test_send_failure_notice_prunes_stale_entries(tmp_path):
+    now = 5000.0
+    bridge = CodexAppBridge(FakeKv(), codex_home=tmp_path / ".codex", now=lambda: now)
+    bridge._send_failure_notice_at[("old-umo", "read-only stale")] = now - 3601
+    bridge._send_failure_notice_at[("fresh-umo", "read-only fresh")] = now - 3599
+
+    message = "Codex Bridge is read-only in this build; app-server write support unavailable."
+
+    assert bridge.should_report_send_failure("umo", message) is True
+    assert ("old-umo", "read-only stale") not in bridge._send_failure_notice_at
+    assert ("fresh-umo", "read-only fresh") in bridge._send_failure_notice_at
+    assert ("umo", message) in bridge._send_failure_notice_at
+
+
 def test_send_uses_app_server_when_bound(tmp_path):
     app_server = FakeAppServer()
     bridge = CodexAppBridge(FakeKv(), codex_home=tmp_path / ".codex", app_server=app_server)
@@ -641,6 +655,16 @@ def test_send_uses_app_server_when_bound(tmp_path):
     assert ok is True
     assert message == "sent to app-thread-1"
     assert app_server.sent == [("app-thread-1", "hello")]
+
+
+def test_send_without_enabled_bridge_does_not_reference_hapi(tmp_path):
+    bridge = CodexAppBridge(FakeKv(), codex_home=tmp_path / ".codex")
+
+    ok, message = run(bridge.send_to_bound_thread("umo", "hello"))
+
+    assert ok is False
+    assert "HAPI" not in message
+    assert "/codexbridge on" in message
 
 
 def test_send_to_bound_thread_polls_new_app_output_after_success(tmp_path):
@@ -927,6 +951,42 @@ def test_poll_suppresses_environment_context_app_user_messages(tmp_path):
     run(bridge.poll_once())
 
     assert run(queue.due_items()) == []
+
+
+def test_poll_suppresses_internal_codex_context_messages(tmp_path):
+    codex_home = tmp_path / ".codex"
+    thread_id = "019ee497-9203-7cf0-b071-a37dfe0f4733"
+    rollout = codex_home / "sessions" / "2026" / "06" / "20" / f"rollout-demo-{thread_id}.jsonl"
+    write_jsonl(rollout, [])
+    queue = DeliveryQueue(FakeKv())
+    bridge = CodexAppBridge(queue.kv, codex_home=codex_home, delivery_queue=queue)
+    bridge.windows.add("umo")
+    bridge.bindings["umo"] = bridge.create_binding(thread_id, rollout, rollout.stat().st_size)
+    with rollout.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "# AGENTS.md instructions\n<INSTRUCTIONS>\ninternal project instructions\n</INSTRUCTIONS>"}]}}) + "\n")
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "commentary", "content": [{"type": "output_text", "text": "Using `systematic-debugging` + `test-driven-development` to diagnose this."}]}}) + "\n")
+        f.write(json.dumps({"type": "response_item", "payload": {"type": "message", "role": "assistant", "phase": "commentary", "content": [{"type": "output_text", "text": "Another language model started to solve this problem and produced a summary of its thinking process."}]}}) + "\n")
+
+    run(bridge.poll_once())
+
+    assert run(queue.due_items()) == []
+
+
+def test_poll_suppresses_internal_jsonl_agent_context_on_task_complete(tmp_path):
+    codex_home = tmp_path / ".codex"
+    thread_id = "019ee497-9203-7cf0-b071-a37dfe0f4733"
+    rollout = codex_home / "sessions" / "2026" / "06" / "20" / f"rollout-demo-{thread_id}.jsonl"
+    write_jsonl(rollout, [])
+    bridge = CodexAppBridge(FakeKv(), codex_home=codex_home)
+    bridge.windows.add("umo")
+    bridge.bindings["umo"] = bridge.create_binding(thread_id, rollout, rollout.stat().st_size)
+    with rollout.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"type": "event_msg", "payload": {"type": "agent_message", "message": "Another language model started to solve this problem and produced a summary of its thinking process.", "phase": "commentary"}}) + "\n")
+        f.write(json.dumps({"type": "event_msg", "payload": {"type": "task_complete", "turn_id": "turn-1"}}) + "\n")
+
+    messages = run(bridge.poll_once())
+
+    assert messages == []
 
 
 def test_poll_surfaces_function_call_execution_errors_as_system_messages(tmp_path):
