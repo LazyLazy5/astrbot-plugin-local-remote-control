@@ -14,10 +14,30 @@
     "type": "bool",
     "default": true
   },
-  "hapi_connector_plugin_name": {
-    "description": "HAPI 连接器插件名",
+  "hapi_endpoint": {
+    "description": "HAPI Hub 地址，例如 http://127.0.0.1:3000",
     "type": "string",
-    "default": "astrbot_plugin_hapi_connector"
+    "default": ""
+  },
+  "access_token": {
+    "description": "HAPI access token；可按 HAPI 约定使用 token:namespace",
+    "type": "string",
+    "default": ""
+  },
+  "proxy_url": {
+    "description": "HAPI HTTP 代理，可留空",
+    "type": "string",
+    "default": ""
+  },
+  "jwt_lifetime": {
+    "description": "HAPI JWT 有效期秒数",
+    "type": "int",
+    "default": 900
+  },
+  "refresh_before_expiry": {
+    "description": "JWT 过期前多少秒刷新",
+    "type": "int",
+    "default": 180
   },
   "enable_codex_app_bridge": {
     "description": "是否允许使用 /codexbridge on",
@@ -25,4 +45,3 @@
     "default": true
   }
 }
-
